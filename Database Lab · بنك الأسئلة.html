@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Database Lab · COMP163</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,Arial,sans-serif;background:#11111a;color:#e8e6f0;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom))}
+.wrap{max-width:560px;margin:auto}
+.sub{font-size:12px;letter-spacing:2px;color:#a78bfa;text-transform:uppercase}
+h1{font-size:22px;margin:4px 0 0}
+.card{background:#1b1a2e;border:1px solid #2e2c4a;border-radius:18px;padding:16px;margin-top:14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+select,.btn{font:inherit;background:#2a2750;color:#e8e6f0;border:1px solid #3d3a68;border-radius:12px;padding:10px 12px}
+.btn:disabled{opacity:.4}
+.btn.p{background:#c4b5fd;color:#1b1a2e;border:none;font-weight:700}
+.badge{display:inline-block;font-size:12px;padding:4px 10px;border-radius:999px;background:#2a2750;margin:0 0 6px 6px}
+.badge.g{background:#143d33;color:#6ee7b7}
+.bar{height:8px;background:#2e2c4a;border-radius:99px;overflow:hidden;margin-top:12px}
+.bar div{height:100%;background:#a78bfa;width:0;transition:width .3s}
+.q{font-size:19px;line-height:1.5;direction:ltr;text-align:left;margin:12px 0 4px}
+.opt{display:flex;gap:10px;align-items:flex-start;width:100%;direction:ltr;text-align:left;background:#20203a;border:1px solid #33315a;border-radius:14px;padding:12px;margin-top:10px;color:#e8e6f0;font:inherit;cursor:pointer}
+.opt b{flex:none;width:28px;height:28px;border-radius:8px;background:#0b0b14;display:grid;place-items:center;color:#c4b5fd}
+.ok{border-color:#34d399!important;background:#123b30!important}
+.bad{border-color:#f87171!important;background:#3d1c24!important}
+.exp{margin-top:14px;padding:14px;border-radius:14px;background:#171a2e;line-height:1.9}
+</style>
+</head>
+<body>
+<div class="wrap">
+ <div class="sub">COMP163 · Study Workspace</div>
+ <h1>Database Lab · بنك الأسئلة</h1>
+ <div class="card">
+  <div class="row">
+   <select id="topic" onchange="build()">
+    <option value="all">كل المواضيع</option>
+    <option value="norm">Normalization · CH10</option>
+    <option value="ex">تمارين Normalization</option>
+    <option value="idx">Indexing · CH14</option>
+   </select>
+   <select id="mode" onchange="build()">
+    <option value="all">كل الأسئلة</option>
+    <option value="wrong">مراجعة الأخطاء بس</option>
+   </select>
+  </div>
+  <div class="bar"><div id="bar"></div></div>
+  <div class="row" style="margin-top:10px">
+   <div id="stat" style="font-size:14px"></div>
+   <button class="btn" onclick="ans={};build()">إعادة الكل</button>
+  </div>
+ </div>
+ <div class="card" id="box"></div>
+</div>
+<script>
+const TOPIC={norm:"CH10 · Normalization",ex:"تمارين Normalization",idx:"CH14 · Indexing"};
+const Q=[
+{id:1,t:"norm",d:"Easy",q:"Changing the name of project P1 must be repeated for every employee working on P1 in EMP_PROJ. Which anomaly is this?",o:["Insertion anomaly","Deletion anomaly","Update anomaly","Null anomaly"],a:2,e:"ده Update Anomaly: اسم المشروع متكرر في كل صف، فلو اتغير لازم يتعدل في كل الصفوف، ولو صف واحد اتفات البيانات تبقى متضاربة."},
+{id:2,t:"norm",d:"Easy",q:"In EMP_PROJ you cannot store a new project until an employee is assigned to it. Which anomaly is this?",o:["Update anomaly","Insertion anomaly","Deletion anomaly","Functional anomaly"],a:1,e:"ده Insertion Anomaly: كل صف لازم يكون فيه موظف ومشروع مع بعض، فمينفعش تضيف مشروع من غير موظف."},
+{id:3,t:"norm",d:"Easy",q:"In EMP_PROJ, deleting the only employee on a project also erases the project's details. Which anomaly is this?",o:["Update anomaly","Insertion anomaly","Null anomaly","Deletion anomaly"],a:3,e:"ده Deletion Anomaly: معلومات المشروع متخزنة جوه صفوف الموظفين، فمسح آخر موظف بيمسح المشروع معاه."},
+{id:4,t:"norm",d:"Medium",q:"Which statement correctly defines a functional dependency X -> Y?",o:["X and Y must have the same number of attributes","Whenever two tuples have the same X value, they must have the same Y value","Y must be the primary key of the relation","Every value of Y must be unique in the table"],a:1,e:"X -> Y يعني لو صفين ليهم نفس قيمة X، لازم يكون ليهم نفس قيمة Y. ودي قيد على كل الـ instances مش على بيانات معينة بس."},
+{id:5,t:"norm",d:"Medium",q:"Which dependency is a FULL functional dependency on the key {SSN, PNUMBER}?",o:["{SSN, PNUMBER} -> ENAME","SSN -> ENAME","{SSN, PNUMBER} -> HOURS","PNUMBER -> HOURS"],a:2,e:"{SSN, PNUMBER} -> HOURS فول، لأن SSN لوحده ولا PNUMBER لوحده بيحدد الساعات. أما ENAME فبيتحدد من SSN بس، فده partial."},
+{id:6,t:"norm",d:"Medium",q:"Which value violates First Normal Form (1NF)?",o:["Dnumber = 5","Dname = Research","Dlocations = {Bellaire, Sugarland, Houston}","Dmgr_ssn = 333445555"],a:2,e:"الخانة دي فيها أكتر من قيمة (multivalued)، وده ممنوع في 1NF. الحل إنك تفصل كل location في صف لوحده."},
+{id:7,t:"norm",d:"Medium",q:"In EMP_PROJ with key {SSN, PNUMBER}, ENAME depends only on SSN. What is this called?",o:["Transitive dependency","Partial dependency","Full dependency","Multivalued dependency"],a:1,e:"ده Partial Dependency: جزء من المفتاح (SSN) بيحدد ENAME لوحده، والجدول بالشكل ده مش في 2NF."},
+{id:8,t:"norm",d:"Hard",q:"In EMP_DEPT, SSN -> DNUMBER and DNUMBER -> DMGRSSN both hold. What is SSN -> DMGRSSN?",o:["A full dependency","A transitive dependency","A multivalued dependency","A trivial dependency"],a:1,e:"SSN بيحدد DNUMBER، وDNUMBER بيحدد DMGRSSN، فـ SSN -> DMGRSSN بقت transitive، وده بيمنع الجدول إنه يبقى 3NF."},
+{id:9,t:"norm",d:"Hard",q:"In EMP(SSN, Emp#, Salary) with SSN -> Emp# -> Salary, why is this NOT a 3NF violation?",o:["Salary is a prime attribute","Emp# is a candidate key","SSN is not a key","The relation is only in 1NF"],a:1,e:"المشكلة بتبقى لو الوسيط (Y) مش candidate key. هنا Emp# مفتاح مرشح، فمفيش transitive problem في 3NF."},
+{id:10,t:"ex",d:"Medium",q:"In patient_prescription(patient_id, date, drug_code, drug_name, dosage, duration), why is it NOT in 2NF?",o:["drug_name depends only on drug_code, which is part of the key","dosage depends on patient_id","date is not atomic","The key has only one attribute"],a:0,e:"drug_name بيتحدد من drug_code لوحده، وdrug_code جزء من المفتاح المركب، فده partial dependency. الحل: جدول drug(drug_code, drug_name)."},
+{id:11,t:"ex",d:"Medium",q:"Which decomposition puts patient_doctor(patient_id, patient_name, doctor_id, doctor_name) into 3NF?",o:["doctor(doctor_id, doctor_name) and patient(patient_id, patient_name, doctor_id)","patient(patient_id) and doctor(doctor_name)","Keep it as is because it is in 2NF","Add date to the key"],a:0,e:"patient_id -> doctor_id -> doctor_name، يعني doctor_name تبعية transitive. نفصل الدكتور في جدول لوحده، والمريض يشاور عليه بـ FK doctor_id."},
+{id:12,t:"ex",d:"Hard",q:"In ART_PURCHASE, the FDs are customer_id -> customer info, art_id -> art info, and {customer_id, art_id} -> purchase_date. What is the primary key of ART_PURCHASE after normalization?",o:["customer_id","art_id","{customer_id, art_id}","{art_id, artist_code}"],a:2,e:"ولا attribute لوحده بيحدد purchase_date، فالمفتاح المركب {customer_id, art_id} هو اللي بيحدد الصف كله."},
+{id:13,t:"ex",d:"Hard",q:"After normalizing ART_PURCHASE, which relation should hold artist_name?",o:["ART_PURCHASE","ART(art_id, art_theme, art_price, artist_code)","ARTIST(artist_code, artist_name)","CUSTOMER(customer_id, customer_name, ...)"],a:2,e:"artist_name بيتحدد من artist_code، وartist_code بيتحدد من art_id، فده transitive، ولازم يتفصل في جدول ARTIST."},
+{id:14,t:"idx",d:"Easy",q:"A primary index is defined on an ordered data file where the ordering field is:",o:["A non-key field with duplicate values","A key field","A composite of all fields","Any unordered field"],a:1,e:"الـ primary index بيتبني على ملف مرتب على key field، وفيه entry لكل block بس، فهو nondense (sparse)."},
+{id:16,t:"idx",d:"Medium",q:"A clustering index is built on an ordering field that is:",o:["A key field with unique values","A non-key field","A field not stored in the file","A BLOB field"],a:1,e:"الـ clustering index بيتبني على non-key ordering field، وفيه entry لكل قيمة distinct بتشاور على أول block فيه القيمة دي."},
+{id:17,t:"idx",d:"Medium",q:"A B+-tree node of order p = 3 can hold at most how many search keys?",o:["1","2","3","4"],a:1,e:"الـ node بياخد أقصى p pointers و p-1 keys، يعني 3 pointers و2 keys بالظبط كحد أقصى."},
+{id:18,t:"idx",d:"Hard",q:"EMPLOYEE file: r = 30000 records, B = 512 bytes, R = 150 bytes. How many blocks does the file occupy?",o:["3","938","5000","10000"],a:3,e:"Bfr = 512 div 150 = 3 records/block، و30000 ÷ 3 = 10000 block."},
+{id:19,t:"idx",d:"Hard",q:"Same file, no index, average linear search. How many block accesses on average?",o:["10000","5000","938","14"],a:1,e:"متوسط البحث الخطي = b/2 = 10000 ÷ 2 = 5000 block access. ولو الملف مرتب، binary search بيكلف حوالي 14."},
+{id:20,t:"idx",d:"Hard",q:"An index on SSN has field size 9 bytes and pointer size 7 bytes, block size 512. How many index blocks for 30000 records?",o:["938","10000","32","16"],a:0,e:"حجم الـ entry = 9 + 7 = 16 byte، فـ 512 ÷ 16 = 32 entry في البلوك، و30000 ÷ 32 ≈ 938 block للـ index."},
+{id:22,t:"idx",d:"Medium",q:"Which statement about B+-trees is TRUE?",o:["Data pointers exist at all levels, including internal nodes","All data pointers are stored in the leaf nodes","Leaf nodes are never linked","B+-trees always have more levels than B-trees"],a:1,e:"في الـ B+-tree كل الـ data pointers في الـ leaves بس، والـ internal nodes فيها keys ومؤشرات شجرية. ده بيخلي الـ fanout أعلى وعدد المستويات أقل."},
+{id:23,t:"idx",d:"Hard",q:"In a B+-tree, when a LEAF node splits, what happens to the separating key?",o:["It moves up and is removed from the leaf","It is copied up to the parent and stays in the leaf","It is deleted from the tree","It becomes a data pointer"],a:1,e:"في leaf split الـ key بيتنسخ للأب وبيفضل موجود في الـ leaf. أما في internal split فالـ key بيطلع للأب ومش بيفضل في الـ node."}
+];
+let list=[],i=0,ans={};
+const $=id=>document.getElementById(id);
+function build(){
+ const t=$("topic").value,m=$("mode").value;
+ list=Q.filter(x=>(t==="all"||x.t===t)&&(m==="all"||(ans[x.id]!==undefined&&ans[x.id]!==x.a)));
+ i=0;render();
+}
+function pick(k){const x=list[i];if(ans[x.id]!==undefined)return;ans[x.id]=k;render();}
+function go(d){i=(i+d+list.length)%list.length;render();}
+function render(){
+ const done=Object.keys(ans).length;
+ const ok=Q.filter(x=>ans[x.id]===x.a).length;
+ $("stat").textContent=`${done} من ${Q.length} اتجاوبوا · صح ${ok} · غلط ${done-ok}`;
+ $("bar").style.width=(done/Q.length*100)+"%";
+ const box=$("box");
+ if(!list.length){box.innerHTML="<p>ما فيش أسئلة في الفلتر ده. جاوب الأول أو غيّر الاختيار.</p>";return;}
+ const x=list[i],c=ans[x.id],answered=c!==undefined;
+ box.innerHTML=`
+  <span class="badge">QUESTION ${i+1} / ${list.length}</span><span class="badge g">${TOPIC[x.t]} · ${x.d}</span>
+  <div class="q">${x.q}</div>
+  ${x.o.map((o,k)=>{
+    const cls=!answered?"":k===x.a?"ok":k===c?"bad":"";
+    return `<button class="opt ${cls}" onclick="pick(${k})"><b>${"ABCD"[k]}</b><span>${o}</span></button>`;
+  }).join("")}
+  ${answered?`<div class="exp"><b>${c===x.a?"✅ إجابة صح":"❌ إجابة غلط"}</b><br>${x.e}</div>`:""}
+  <div class="row" style="margin-top:14px">
+   <button class="btn" onclick="go(-1)" ${i===0?"disabled":""}>← السابق</button>
+   <button class="btn p" onclick="go(1)">${i===list.length-1?"من الأول ↺":"التالي →"}</button>
+  </div>`;
+}
+build();
+</script>
+</body>
+</html>
